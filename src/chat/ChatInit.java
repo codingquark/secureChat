@@ -14,7 +14,7 @@ public class ChatInit {
 		
 		try {
 			serverSocket = new ServerSocket(4444);
-			System.out.print("Server at port 4444");
+			System.out.println("Server at port 4444");
 		} catch (IOException ioe) {
 			System.out.println("Could not initialize the port 4444");
 			System.exit(-1);

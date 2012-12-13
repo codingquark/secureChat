@@ -1,161 +1,150 @@
 package chat;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.math.BigInteger;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.Socket;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
-import security.Rsa;
+public class ChatThread extends Thread {
+	
+	private Socket socket;
+	private byte[] input;
+	
+	public static final String ALGORITHM = "RSA";
+	public static final String PRIVATE_KEY_FILE = "/home/RSAprivatekey1.rsa";
+	public static final String PUBLIC_KEY_FILE = "/home/RSApublickey1.rsa";
 
-public class ChatThread extends Thread{
-	
-	private Socket socket = null;
-	String random1;
-	BigInteger rand = null;
-	
-	public ChatThread(Socket socket) {
-		super("ClientThread");
-		this.socket = socket;
+	public ChatThread(Socket accept) {
+		super("ChatThread");
+		this.socket = accept;
+		System.out.println("New Client: " + socket.getPort());
+		
 	}
 	
-	public void run() {
-		System.out.println("New client:" + socket);
+	public void Run() {
 		
-		try {
-			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		try{			
+			ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(PRIVATE_KEY_FILE));
+		    final PrivateKey privateKey = (PrivateKey) inputStream.readObject();
+		    inputStream.close();
+		    
+		    InputStream in = socket.getInputStream();
 			
-			random1 = in.readLine();
-			System.out.println("Client: " + random1);
+			in.read(input);
 			
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-		}
-		
-		try {
-			rand = operateRandom(random1, 1);
-		} catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalBlockSizeException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (BadPaddingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchPaddingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvalidKeySpecException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-			
-			if(rand != null) {
-				byte[] randB = rand.toByteArray();
-				String send = randB.toString();				
+			System.out.println("Read.");
+		    final String plainTextString = decrypt(input, privateKey);
+		    final byte[] plainText = plainTextString.getBytes("UTF-8");
+		    
+		    sendBytes(plainText);
 				
-				out.println(send);
-			}
-						
 		} catch (IOException e) {
-			
+			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
-	public BigInteger operateRandom(String random, int flag) throws IllegalBlockSizeException, BadPaddingException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidKeySpecException {
-		String passPhrase = null;
-		byte fileContent[] = null;
-	
+	public void sendBytes(byte[] bytes) {
 		try {
-				BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-	
-				System.out.println("Please enter a passphrase: ");
-				passPhrase = reader.readLine().toString();
-	
+			OutputStream out = socket.getOutputStream(); 
+	    
+			out.write(bytes);
 		} catch (IOException e) {
-			System.out.println("Could not read the pass phrase.");
 			e.printStackTrace();
-			System.exit(0);
 		}
-	
-		MessageDigest md5Digest = MessageDigest.getInstance("MD5");
-		byte[] pass = passPhrase.getBytes();
-	
-		byte[] md5data = md5Digest.digest(pass);
-		SecretKey blowKey = new SecretKeySpec(md5data, 0, md5data.length, "Blowfish");
-	
-		Cipher cipher = Cipher.getInstance("Blowfish");
-		cipher.init(Cipher.DECRYPT_MODE, blowKey);
-	
-		try {
-	
-			File homeDir = new File(System.getProperty("user.home"));
-			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-			String fileName = null;
-	
-			System.out.println("Please choose a key ID: ");
-			String ID = reader.readLine().toString();
-	
-			if(flag == 0) fileName = "public";
-			else fileName = "private";
-	
-			File fileToRead = new File(homeDir, "RSA" + fileName + "key" + ID + ".rsa");
-			FileInputStream fis = new FileInputStream(fileToRead);
-	
-			if(!fileToRead.exists()) {
-				System.out.println("The key does not exist.");
-				System.exit(0);
-			}
-	
-			fileContent = new byte[(int)fileToRead.length()];
-			fis.read(fileContent);
-			fis.close();
-	
-			byte[] key = cipher.doFinal(fileContent);
-			Rsa rsa = new Rsa();
-	
-			if(flag == 0) rsa.setPublicKey(key);
-			else if(flag == 1) rsa.setPrivateKey(key);
-			
-			byte[]temp = random.getBytes();
-			
-			BigInteger decRand = rsa.decryptWithPrivate(temp);
-	
-			return decRand;
-		} catch (FileNotFoundException e) {
-			System.out.println("Could not find the file...");
-	
-			System.exit(0);
-		} catch (IOException e) {
-			System.out.println("Error while reading the keys...");
-	
-			System.exit(0);
-		}
-		return null;
 	}
+	
+	public static void generateKey() {
+	    try {
+	      final KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
+	      keyGen.initialize(1024);
+	      final KeyPair key = keyGen.generateKeyPair();
+
+	      File privateKeyFile = new File(PRIVATE_KEY_FILE);
+	      File publicKeyFile = new File(PUBLIC_KEY_FILE);
+
+	      // Create files to store public and private key
+	      if (privateKeyFile.getParentFile() != null) {
+	        privateKeyFile.getParentFile().mkdirs();
+	      }
+	      privateKeyFile.createNewFile();
+
+	      if (publicKeyFile.getParentFile() != null) {
+	        publicKeyFile.getParentFile().mkdirs();
+	      }
+	      publicKeyFile.createNewFile();
+
+	      // Saving the Public key in a file
+	      ObjectOutputStream publicKeyOS = new ObjectOutputStream(
+	          new FileOutputStream(publicKeyFile));
+	      publicKeyOS.writeObject(key.getPublic());
+	      publicKeyOS.close();
+
+	      // Saving the Private key in a file
+	      ObjectOutputStream privateKeyOS = new ObjectOutputStream(
+	          new FileOutputStream(privateKeyFile));
+	      privateKeyOS.writeObject(key.getPrivate());
+	      privateKeyOS.close();
+	    } catch (Exception e) {
+	      e.printStackTrace();
+	    }
+
+	  }
+	
+	public static boolean areKeysPresent() {
+
+	    File privateKey = new File(PRIVATE_KEY_FILE);
+	    File publicKey = new File(PUBLIC_KEY_FILE);
+
+	    if (privateKey.exists() && publicKey.exists()) {
+	      return true;
+	    }
+	    return false;
+	  }
+	
+	public static byte[] encrypt(String text, PublicKey key) {
+	    byte[] cipherText = null;
+	    try {
+	      // get an RSA cipher object and print the provider
+	      final Cipher cipher = Cipher.getInstance(ALGORITHM);
+	      // encrypt the plain text using the public key
+	      cipher.init(Cipher.ENCRYPT_MODE, key);
+	      cipherText = cipher.doFinal(text.getBytes());
+	    } catch (Exception e) {
+	      e.printStackTrace();
+	    }
+	    return cipherText;
+	  }
+	
+	public static String decrypt(byte[] text, PrivateKey key) {
+	    byte[] dectyptedText = null;
+	    try {
+	      // get an RSA cipher object and print the provider
+	      final Cipher cipher = Cipher.getInstance(ALGORITHM);
+
+	      // decrypt the text using the private key
+	      cipher.init(Cipher.DECRYPT_MODE, key);
+	      dectyptedText = cipher.doFinal(text);
+
+	    } catch (Exception ex) {
+	      ex.printStackTrace();
+	    }
+
+	    return new String(dectyptedText);
+	  }
 
 }
