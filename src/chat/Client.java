@@ -20,8 +20,8 @@ import javax.crypto.Cipher;
 public class Client {
 	
 	public static final String ALGORITHM = "RSA";
-	public static final String PRIVATE_KEY_FILE = "/home/RSAprivatekey1.rsa";
-	public static final String PUBLIC_KEY_FILE = "/home/RSApublickey1.rsa";
+	public static final String PRIVATE_KEY_FILE = "/home/chatKey.private";
+	public static final String PUBLIC_KEY_FILE = "/home/chatKey.public";
 	public static byte[] input = null;
 	public static Socket socket = null;
 	
@@ -40,13 +40,21 @@ public class Client {
 		
 		try {
 
-		      final String originalText = "Text to be encrypted ";
+		      final String originalText = "d";
 		      ObjectInputStream inputStream = null;
 
 		      // Encrypt the string using the public key
+		      if (!areKeysPresent()) {
+			        // Method generates a pair of keys using the RSA algorithm and stores it
+			        // in their respective files
+			        generateKey();
+			  }
+		      
 		      inputStream = new ObjectInputStream(new FileInputStream(PUBLIC_KEY_FILE));
 		      final PublicKey publicKey = (PublicKey) inputStream.readObject();
 		      final byte[] cipherText = encrypt(originalText, publicKey);
+		      int len = cipherText.length;
+		      System.out.println("Lenght: " + len);
 		      
 		      sendBytes(cipherText);
 		      
@@ -75,7 +83,7 @@ public class Client {
 	
 	public static void sendBytes(byte[] bytes) {
 		try {
-			OutputStream out = socket.getOutputStream(); 
+			OutputStream out = socket.getOutputStream();
 	    
 			out.write(bytes);
 			out.close();
