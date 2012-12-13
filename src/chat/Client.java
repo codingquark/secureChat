@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
@@ -22,7 +23,7 @@ public class Client {
 	public static final String ALGORITHM = "RSA";
 	public static final String PRIVATE_KEY_FILE = "/home/chatKey.private";
 	public static final String PUBLIC_KEY_FILE = "/home/chatKey.public";
-	public static byte[] input = null;
+	public static byte[] input = new byte[128];
 	public static Socket socket = null;
 	
 	
@@ -40,7 +41,7 @@ public class Client {
 		
 		try {
 
-		      final String originalText = "d";
+		      final String originalText = "dhavan";
 		      ObjectInputStream inputStream = null;
 
 		      // Encrypt the string using the public key
@@ -70,11 +71,10 @@ public class Client {
 //		      System.out.println("Encrypted Text: " + new String(cipherText));
 //		      System.out.println("Decrypted Text: " + plainText);
 		      
-		      inputStream.close();
+		      InputStream in = socket.getInputStream();
+		      in.read(input);
 		      
-		      //InputStream in = socket.getInputStream();
-		      
-		     // System.out.println("Server: " + new String(input));
+		     System.out.println("Server: " + new String(input));
 
 		    } catch (Exception e) {
 		      e.printStackTrace();
@@ -86,7 +86,6 @@ public class Client {
 			OutputStream out = socket.getOutputStream();
 	    
 			out.write(bytes);
-			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

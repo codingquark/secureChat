@@ -19,7 +19,7 @@ import javax.crypto.Cipher;
 public class ChatThread extends Thread {
 	
 	private Socket socket;
-	private byte[] input = null;
+	private byte[] input = new byte[128];
 	
 	public static final String ALGORITHM = "RSA";
 	public static final String PRIVATE_KEY_FILE = "/home/chatKey.private";
@@ -37,19 +37,13 @@ public class ChatThread extends Thread {
 		try{
 			
 		    InputStream in = socket.getInputStream();
-		    int avail = in.available();
 		    
-		    input = new byte[avail];
-			int len = in.read(input);
-			
-			System.out.println("Client: " + input);
-			System.out.println("Length: " + len);
+			in.read(input);
 			
 			ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(PRIVATE_KEY_FILE));
 		    final PrivateKey privateKey = (PrivateKey) inputStream.readObject();
 		    final String plainTextString = decrypt(input, privateKey);
 		    final byte[] plainText = plainTextString.getBytes("UTF-8");
-		    inputStream.close();
 		    
 		    sendBytes(plainText);
 				
